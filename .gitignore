@@ -16,7 +16,6 @@ env/
 .vscode/
 *.swp
 *.swo
-*~
 .ipynb_checkpoints/
 *.ipynb
 .wandb/
@@ -29,5 +28,4 @@ checkpoints/
 data/*
 !data/README.md
 datasets/
-models/
 outputs/
