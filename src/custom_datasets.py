@@ -16,8 +16,7 @@ def get_data(cfg):
     if data_type == "text":
         return get_toy_text(cfg)
     elif data_type == "image":
-        dataset_name = getattr(cfg.data, "dataset_name", None)
-        return get_image_dataset(cfg, dataset_name=dataset_name)
+        return get_image_dataset(cfg)
     else:
         raise ValueError(f"Unsupported data type: {data_type}")
 
@@ -110,16 +109,14 @@ class ImageDataBundle:
     sample_shape: list[int]
 
 
-def get_image_dataset(cfg, dataset_name: str | None = None) -> ImageDataBundle:
+def get_image_dataset(cfg) -> ImageDataBundle:
     """
     Returns dataset and loaders for torchvision image datasets.
     """
     vocab_size = cfg.data.vocab_size
     batch_size = cfg.data.batch_size
 
-    dataset_name = dataset_name or getattr(cfg, "dataset_name", None)
-
-    name = str(dataset_name).lower().replace("-", "").replace("_", "")
+    name = cfg.data.name
     data_dir = cfg.data.data_path
 
     to_tokens = get_image_transforms()
@@ -132,7 +129,6 @@ def get_image_dataset(cfg, dataset_name: str | None = None) -> ImageDataBundle:
 
     val_split = 0.1
     if val_split is not None:
-        val_split = float(val_split)
         n_val = int(val_split * len(train_dataset))
         n_train = len(train_dataset) - n_val
         train_dataset, val_dataset = random_split(train_dataset, [n_train, n_val])
@@ -159,6 +155,19 @@ def get_image_dataset(cfg, dataset_name: str | None = None) -> ImageDataBundle:
     )
 
 
+class TextDataset(Dataset):
+    def __init__(self, data: torch.Tensor, seq_len: int) -> None:
+        self.data = data
+        self.seq_len = seq_len
+
+    def __len__(self) -> int:
+        return max(0, len(self.data) - self.seq_len + 1)
+
+    def __getitem__(self, idx: int) -> torch.Tensor:
+        return self.data[idx : idx + self.seq_len]
+    
+    
+    
 def get_image_transforms(manual_transforms=None):
     if manual_transforms is not None:
         return manual_transforms
@@ -170,7 +179,6 @@ def get_image_transforms(manual_transforms=None):
             transforms.Lambda(lambda x: x.long()),
         ]
     )
-
 
 __IMAGE_DATASETS__ = {}
 
@@ -196,6 +204,7 @@ class MNISTDataset(torchvision.datasets.MNIST):
             train=train,
             transform=transform,
             target_transform=target_transform,
+            download=True,
         )
 
 
@@ -212,6 +221,7 @@ class FashionMNISTDataset(torchvision.datasets.FashionMNIST):
             train=train,
             transform=transform,
             target_transform=target_transform,
+            download=True,
         )
 
 
@@ -228,6 +238,7 @@ class CIFAR10Dataset(torchvision.datasets.CIFAR10):
             train=train,
             transform=transform,
             target_transform=target_transform,
+            download=True,
         )
 
 
@@ -246,16 +257,7 @@ class SVHNDataset(torchvision.datasets.SVHN):
             split="train" if train else "test",
             transform=transform,
             target_transform=target_transform,
+            download=True,
         )
 
 
-class TextDataset(Dataset):
-    def __init__(self, data: torch.Tensor, seq_len: int) -> None:
-        self.data = data
-        self.seq_len = seq_len
-
-    def __len__(self) -> int:
-        return max(0, len(self.data) - self.seq_len + 1)
-
-    def __getitem__(self, idx: int) -> torch.Tensor:
-        return self.data[idx : idx + self.seq_len]

@@ -35,7 +35,7 @@ class MD4:
     def forward_q(self, x_0, t):
         """Forward process q(x_t | x_0)."""
         alpha_t = self.scheduler.alpha(t)
-        not_mask = torch.bernoulli(alpha_t).to(x_0.device).unsqueeze(-1)
+        not_mask = torch.bernoulli(broadcast_to(alpha_t, x_0.shape)).to(x_0.device)
         return torch.where(not_mask.bool(), x_0, torch.full_like(x_0, self.vocab_size))
 
     def x0_pred(self, x_t, t):
@@ -77,7 +77,8 @@ class MD4:
         masked = x0 == self.vocab_size
         x0_cliped = torch.where(masked, torch.zeros_like(x0), x0)
         masked = masked[..., None]
-        logits, _ = self.network(x0, torch.tensor(0.0), cond=cond)
+        t0 = torch.zeros(x0.shape[0], device=x0.device)
+        logits, _ = self.network(x0, t0, cond=cond)
         probs = torch.where(
             masked,
             torch.softmax(logits, dim=-1),
@@ -104,11 +105,13 @@ class MD4:
         for i in tqdm(range(sample_steps), desc="Sampling"):
             t = (sample_steps - i) / sample_steps
             s = t - 1 / sample_steps
-            # if self.scheduler != "cosine":
+            if self.scheduler != "cosine":
                 # for linear schedules (see Sec.4 in the paper)
-            t = math.cos(math.pi / 2.0 * (1.0 - t)) * torch.ones(batch_size)
-            s = math.cos(math.pi / 2.0 * (1.0 - s)) * torch.ones(batch_size)
-
+                t = math.cos(math.pi / 2.0 * (1.0 - t)) * torch.ones(batch_size)
+                s = math.cos(math.pi / 2.0 * (1.0 - s)) * torch.ones(batch_size)
+            else:
+                t = t * torch.ones(batch_size)
+                s = s * torch.ones(batch_size)
             # expand
             # t = broadcast_to(t, [batch_size] + self.sample_shape).to(x.device)
             # s = broadcast_to(s, [batch_size] + self.sample_shape).to(x.device)

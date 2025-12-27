@@ -1,0 +1,39 @@
+data:
+  name: mnist
+  data_type: image
+  data_path: data/mnist
+  batch_size: 1
+  vocab_size: 256
+  # sample shape managed by custom dataset
+
+network:
+  _target_: src.nets.img.UNet
+  vocab_size: ${data.vocab_size}
+  in_channels: 1
+  d_channels: 32
+  n_layers: 2
+  num_attn_heads: 1
+  dropout_rate: 0.1
+  time_scale: 1000.0
+
+model:
+  name: md4
+  seq_len: null
+  scheduler: cosine
+
+train:
+  num_iter: 100000
+  lr: 1e-4
+  grad_clip: 1.0
+  weight_decay: 0.0
+  antithetic: true
+
+logging:
+  ckpt_dir: checkpoints/${data.name}_${model.name}
+  log_freq: 500
+  save_freq: 5000
+  use_wandb: false
+
+device: cuda
+seed: 42
+# eval:

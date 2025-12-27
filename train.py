@@ -46,7 +46,9 @@ def train_model(cfg, data_obj, model, device="cuda"):
     def eval_step(data_type):
         # only visualise samples
         x = model.sample(eval_num, sample_steps=100, cond=None, init=eval_latent)
-        vis = vis_masked(x, mask_token=model.vocab_size, decode=data_obj.vocab.decode)
+        vocab = getattr(data_obj, "vocab", None)
+        decode = getattr(vocab, "decode", None) if vocab is not None else None
+        vis = vis_masked(x, mask_token=model.vocab_size, decode=decode)
         if data_type == "image":
             save_path = os.path.join(cfg.logging.ckpt_dir, f"sample_{counter}.png")
             save_image(vis, save_path)
@@ -65,6 +67,10 @@ def train_model(cfg, data_obj, model, device="cuda"):
     while counter < num_iter:
         for batch in data_obj.train_loader:
             model.network.train()
+            if isinstance(batch, (list, tuple)):
+                label = batch[1]
+                batch = batch[0]
+                label = label.to(device)
             batch = batch.to(device)
             loss_dict = train_step(batch)
             counter += 1
