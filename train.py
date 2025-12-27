@@ -11,6 +11,10 @@ from torchvision.utils import make_grid, save_image
 from src.models.md4 import MD4
 from src.custom_datasets import get_data
 from src.models.utils_model import vis_masked
+from src.nets.utils_net import count_parameters_in_M
+from src.trainers.utils_train import setup_logging
+
+logger = setup_logging(__name__)
 
 
 # TODO: write separate trainer class
@@ -103,6 +107,7 @@ def main(cfg: DictConfig):
     device = cfg.device
     data_obj = get_data(cfg)
     network = instantiate(cfg.network)
+    logger.info(f"Number of model parameters: {count_parameters_in_M(network)} M")
     model = MD4(
         network=network,
         vocab_size=data_obj.vocab_size,

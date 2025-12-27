@@ -24,11 +24,13 @@ class MD4:
         vocab_size: int,
         scheduler: str = "cosine",
         sample_shape: list[int] = [3, 32, 32],
+        device: str = "cuda",
     ):
         # super(MD4, self).__init__()
         self.network = network
         self.vocab_size = vocab_size
         self.scheduler = MaskingSchedule(schedule_fn_type=scheduler)
+        self.device = device
         # sample shape either (c,h,w) or (seq_len,)
         self.sample_shape = sample_shape if sample_shape is not None else [1]
 
@@ -101,6 +103,8 @@ class MD4:
             x = init
         else:
             x = self.prior_sample(batch_size)
+            
+        x = x.to(self.device)
         ret = [x]
         for i in tqdm(range(sample_steps), desc="Sampling"):
             t = (sample_steps - i) / sample_steps
@@ -112,12 +116,8 @@ class MD4:
             else:
                 t = t * torch.ones(batch_size)
                 s = s * torch.ones(batch_size)
-            # expand
-            # t = broadcast_to(t, [batch_size] + self.sample_shape).to(x.device)
-            # s = broadcast_to(s, [batch_size] + self.sample_shape).to(x.device)
             t = t.to(x.device)
             s = s.to(x.device)
-
             x = self.xs_xt(x, t, s, cond=cond)
             if return_list:
                 ret.append(x)

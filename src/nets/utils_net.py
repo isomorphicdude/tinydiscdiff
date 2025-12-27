@@ -1,7 +1,17 @@
 import math
 
+import numpy as np
 import torch
 
+def count_parameters_in_M(model: torch.nn.Module) -> float:
+    return (
+        np.sum(
+            np.prod(v.size())
+            for name, v in model.named_parameters()
+            if "auxiliary" not in name
+        )
+        / 1e6
+    )
 
 def _timestep_embedding(
     timesteps: torch.Tensor,

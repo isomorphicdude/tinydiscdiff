@@ -1,0 +1,13 @@
+torch
+torchvision
+numpy
+tqdm
+
+hydra-core
+omegaconf
+
+wandb
+torchmetrics
+
+matplotlib
+ipykernel
