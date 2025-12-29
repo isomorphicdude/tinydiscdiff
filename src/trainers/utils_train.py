@@ -1,4 +1,3 @@
-"""Training utils for LSGM model."""
 import os
 import types
 import random
@@ -55,24 +54,25 @@ def sort_ckpts(ckpt_dir: str, name: str) -> str | None:
     return os.path.join(ckpt_dir, fname)
 
 def get_wandb_tab_text(path: str) -> wandb.Table:
-        """Parse `sample_*.txt` produced by `_save_eval` into a per-sample W&B table."""
-        with open(path, "r", encoding="utf-8") as f:
-            raw = f.read()
+    """
+    Parse per-sample text outputs from `_save_eval` into a W&B table.
+    """
 
-        rows = []
-        for line in raw.splitlines():
-            if line.startswith("[Sample ") and "]:" in line:
-                prefix, text = line.split(":", 1)
-                sample_id = prefix.removeprefix("[Sample ").removesuffix("]").strip()
-                rows.append([sample_id, text.lstrip()])
+    rows = []
+    for fname in sorted(os.listdir(path)):
+        if not fname.endswith(".txt"):
+            continue
+        sample_id = fname.rsplit(".", 1)[0].removeprefix("sample_")
+        fpath = os.path.join(path, fname)
+        with open(fpath, "r", encoding="utf-8") as f:
+            rows.append([sample_id, f.read()])
 
-        if not rows:
-            rows = [[0, raw]]
+    if not rows:
+        rows = [[0, ""]]
+    return wandb.Table(data=rows, columns=["sample_id", "text"])
 
-        return wandb.Table(data=rows, columns=["sample_id", "text"])
 
-
-class AvgrageMeter(object):
+class AverageMeter(object):
     def __init__(self):
         self.reset()
 

@@ -104,15 +104,19 @@ class Trainer:
             save_image(vis, save_path)
             return save_path
 
-        save_path = os.path.join(self.ckpt_dir, f"sample_{step}.txt")
-        with open(save_path, "w", encoding="utf-8") as f:
-            if isinstance(vis, list):
-                for i, txt in enumerate(vis):
-                    f.write(f"[Sample {i}]: {txt}\n")
-            else:
-                f.write(str(vis))
+        samples_dir = os.path.join(self.ckpt_dir, f"samples_{step}")
+        os.makedirs(samples_dir, exist_ok=True)
+
+        if not isinstance(vis, list):
+            raise TypeError("Expected text samples to be a list of strings")
+
+        for i, txt in enumerate(vis):
+            sample_path = os.path.join(samples_dir, f"sample_{i}.txt")
+            with open(sample_path, "w", encoding="utf-8") as f:
+                f.write(str(txt).rstrip())
                 f.write("\n")
-        return save_path
+
+        return samples_dir
 
 
     def _prepare_for_fid(self, x: torch.Tensor, *, as_uint8: bool) -> torch.Tensor:
@@ -209,6 +213,7 @@ class Trainer:
         if resume:
             self.load_checkpoint()
 
+        use_wandb = bool(self.cfg.logging.use_wandb)
         counter = self.global_step
         while counter < self.cfg.train.num_iter:
             for batch in self.data_obj.train_loader:
@@ -216,18 +221,15 @@ class Trainer:
                 loss_dict = self.train_step(batch)
                 counter += 1
                 self.global_step = counter
+                wandb_payload: dict[str, Any] = {}
 
                 if counter % self.cfg.logging.log_freq == 0:
                     logger.info(
                         f"Iter {counter}: "
                         + ", ".join([f"{k}: {v:.4f}" for k, v in loss_dict.items()])
                     )
-
-                if (
-                    self.cfg.logging.use_wandb
-                    and counter % self.cfg.logging.log_freq == 0
-                ):
-                    wandb.log(loss_dict, step=counter)
+                    if use_wandb:
+                        wandb_payload.update(loss_dict)
 
                 if counter % self.cfg.logging.save_freq == 0:
                     ckpt_path = self.save_checkpoint(step=counter)
@@ -239,19 +241,26 @@ class Trainer:
                         + ", ".join([f"{k}: {v}" for k, v in eval_dict.items()])
                     )
 
-                    if self.cfg.logging.use_wandb:
-                        wandb_log = {
-                            k: v for k, v in eval_dict.items() if k != "eval_artifact"
-                        }
+                    if use_wandb:
+                        wandb_payload.update(
+                            {
+                                k: v
+                                for k, v in eval_dict.items()
+                                if k != "eval_artifact"
+                            }
+                        )
                         if self.data_type == "image":
-                            wandb_log["samples"] = wandb.Image(
-                                eval_dict["eval_artifact"]
+                            wandb_payload["samples"] = wandb.Image(
+                                eval_dict["eval_artifact"],
+                                caption=f"Samples at step {counter}",
                             )
                         elif self.data_type == "text":
-                            wandb_log["samples"] = get_wandb_tab_text(
+                            wandb_payload["samples"] = get_wandb_tab_text(
                                 eval_dict["eval_artifact"]
                             )
-                        wandb.log(wandb_log, step=counter)
+
+                if use_wandb and wandb_payload:
+                    wandb.log(wandb_payload, step=counter)
 
                 if counter >= self.cfg.train.num_iter:
                     break

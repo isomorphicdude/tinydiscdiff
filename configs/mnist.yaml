@@ -41,7 +41,7 @@ logging:
 eval:
   num_samples: 16
   sample_steps: 100
-  fid_every: ${logging.save_freq}
+  fid_every: 100_000 #${logging.save_freq}
   fid_num_samples: 256
   fid_batch_size: 64
   fid_sample_steps: 100
