@@ -109,7 +109,7 @@ class MD4:
         for i in tqdm(range(sample_steps), desc="Sampling"):
             t = (sample_steps - i) / sample_steps
             s = t - 1 / sample_steps
-            if self.scheduler != "cosine":
+            if self.scheduler.schedule_fn_type == "linear":
                 # for linear schedules (see Sec.4 in the paper)
                 t = math.cos(math.pi / 2.0 * (1.0 - t)) * torch.ones(batch_size)
                 s = math.cos(math.pi / 2.0 * (1.0 - s)) * torch.ones(batch_size)
