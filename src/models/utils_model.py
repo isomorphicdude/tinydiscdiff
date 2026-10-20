@@ -28,7 +28,10 @@ def loss2bpt(loss_dict, data_shape):
 
 
 def vis_masked(
-    x: torch.Tensor, mask_token: int, decode: Union[callable, None] = None
+    x: torch.Tensor,
+    mask_token: int,
+    decode: Union[callable, None] = None,
+    nrow: int = 8,
 ) -> Union[torch.Tensor, list[str]]:
     """
     Visualizes masked tokens in the input tensor by replacing
@@ -41,8 +44,9 @@ def vis_masked(
             vis.append(decode(x[i].tolist()))
     elif x.dim() == 4:  # Image data
         mask_any = x.eq(mask_token).any(dim=1, keepdim=True)
-        vis = x.float().clone()
+        # pixel tokens are in [0, mask_token - 1], rescale to [0, 1]
+        vis = x.float() / (mask_token - 1)
         mask_color = torch.tensor([1.0, 0.0, 0.0], device=vis.device).view(1, 3, 1, 1)
         vis = torch.where(mask_any.expand_as(vis), mask_color, vis)
-        vis = make_grid(vis, nrow=8, normalize=True, value_range=(0, 1))
+        vis = make_grid(vis, nrow=nrow, normalize=True, value_range=(0, 1))
     return vis
